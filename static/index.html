@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LIU Smart Campus Kiosk</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="bg-canvas"></div>
+
+  <!-- ═══════════════════ WELCOME PAGE ═══════════════════ -->
+  <div id="page-welcome" class="page active">
+    <div class="welcome-wrap">
+      <div class="logo-ring">
+        <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+          alt="LIU Logo" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:68px\'>🎓</div>'" />
+      </div>
+      <div class="uni-label">Lebanese International University</div>
+      <div class="main-title">Smart Campus <span>Kiosk</span></div>
+      <div class="sub-title">Your intelligent guide to campus life — available 24 / 7</div>
+      <div class="divider"></div>
+      <div class="badges">
+        <span class="badge">🗺 Interactive Campus Map</span>
+        <span class="badge">🤖 AI Assistant</span>
+        <span class="badge">👋 Gesture Control</span>
+        <span class="badge">🔐 Secure Login</span>
+        <span class="badge">📍 Real-time Navigation</span>
+      </div>
+      <button class="cta-btn" onclick="navigateTo('dashboard')">Enter Campus Dashboard &nbsp;→</button>
+      <div class="gesture-hint">
+        <span class="gesture-icon">👋</span>
+        Raise your hand and point to navigate hands-free
+      </div>
+    </div>
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div>HAND GESTURE RECOGNITION · READY</div>
+      <div><span class="status-time" id="welcome-time"></span> · TOUCH OR GESTURE TO BEGIN</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DASHBOARD PAGE ═══════════════════ -->
+  <div id="page-dashboard" class="page">
+    <div class="dash-header">
+      <div class="dash-logo-row">
+        <div class="dash-logo-ring">
+          <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+            alt="LIU" onerror="this.style.display='none';this.parentElement.innerHTML='🎓'" />
+        </div>
+        <div>
+          <div class="dash-kiosk-label">Lebanese International University</div>
+          <div class="dash-name">Smart Campus <span>Kiosk</span></div>
+        </div>
+      </div>
+      <div class="dash-right">
+        <div class="dash-session-pill" id="dash-session-pill" style="display:none;">
+          <div class="session-avatar" id="dash-session-avatar">?</div>
+          <div class="session-info">
+            <div class="session-name" id="dash-session-name">Student</div>
+            <div class="session-status">✔ Signed In</div>
+          </div>
+          <button class="session-logout-btn" onclick="logOut()" title="Log out">⏏</button>
+        </div>
+        <div class="dash-gesture-pill"><span class="dash-gesture-pill-icon">👋</span>GESTURE READY</div>
+        <div class="dash-datetime">
+          <div class="dash-time" id="dash-time-big"></div>
+          <div id="dash-date"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-top-row">
+      <div class="dash-welcome-strip">
+        <div class="dash-welcome-text" id="dash-welcome-text">Welcome to <span>Campus Services</span></div>
+        <div class="dash-welcome-sub">Touch a card — or raise your hand to navigate gesture-free</div>
+      </div>
+      <button class="back-btn" onclick="navigateTo('welcome')">← Back to Welcome</button>
+    </div>
+
+    <div class="dash-grid-wrap">
+      <div class="nav-card card-map">
+        <div class="card-icon-wrap">🗺️</div>
+        <div class="card-title">Campus Map</div>
+        <div class="card-desc">Navigate buildings, classrooms, labs, offices, cafeterias, and facilities with an interactive real-time map.</div>
+        <div class="card-arrow">EXPLORE MAP →</div>
+      </div>
+      <div class="nav-card card-ai">
+        <div class="card-icon-wrap">🤖</div>
+        <div class="card-title">AI Assistant</div>
+        <div class="card-desc">Ask anything about campus — schedules, locations, policies, and deadlines. Powered by GPT-4o with full voice support.</div>
+        <div class="card-arrow">ASK AI →</div>
+      </div>
+      <div class="nav-card card-sched" id="card-schedule" onclick="handleScheduleClick()">
+        <div class="card-lock-badge" id="card-lock-badge">
+          <span class="lock-icon">🔒</span>
+          <span class="lock-label">Login Required</span>
+        </div>
+        <div class="card-icon-wrap">📅</div>
+        <div class="card-title">My Schedule</div>
+        <div class="card-desc" id="sched-desc">Sign in with your Student ID to view your classes, exams, and academic deadlines.</div>
+        <div class="card-arrow" id="sched-arrow">LOGIN TO ACCESS →</div>
+      </div>
+      <div class="nav-card card-news" onclick="navigateTo('news')">
+        <div class="card-icon-wrap">📢</div>
+        <div class="card-title">Campus News</div>
+        <div class="card-desc">Stay updated with university announcements, events, club activities, and important notices.</div>
+        <div class="card-arrow">READ NEWS →</div>
+      </div>
+      <div class="nav-card card-login" id="card-login-nav" onclick="handleLoginCardClick()">
+        <div class="card-icon-wrap" id="login-card-icon">🔐</div>
+        <div class="card-title" id="login-card-title">Student Login</div>
+        <div class="card-desc" id="login-card-desc">Authenticate with your LIU Student ID to unlock personalised services and secure campus features.</div>
+        <div class="card-arrow" id="login-card-arrow">LOGIN →</div>
+      </div>
+      <div class="nav-card card-help">
+        <div class="card-icon-wrap">🆘</div>
+        <div class="card-title">Help & Emergency</div>
+        <div class="card-desc">Contact campus security, medical services, IT support, or administration — available 24 / 7.</div>
+        <div class="card-arrow">GET HELP →</div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div id="dash-status-mid">HAND GESTURE RECOGNITION · ACTIVE</div>
+      <div><span class="status-time" id="dash-status-time"></span> · SESSION ACTIVE</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ LOGIN PAGE ═══════════════════ -->
+  <div id="page-login" class="page">
+    <div class="dash-header">
+      <div class="dash-logo-row">
+        <div class="dash-logo-ring">
+          <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+            alt="LIU" onerror="this.style.display='none';this.parentElement.innerHTML='🎓'" />
+        </div>
+        <div>
+          <div class="dash-kiosk-label">Lebanese International University</div>
+          <div class="dash-name">Smart Campus <span>Kiosk</span></div>
+        </div>
+      </div>
+      <div class="dash-right">
+        <div class="dash-gesture-pill"><span class="dash-gesture-pill-icon">👋</span>GESTURE READY</div>
+        <div class="dash-datetime">
+          <div class="dash-time" id="login-time-big"></div>
+          <div id="login-date"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-wrap">
+      <!-- Keypad card -->
+      <div class="login-card" id="login-card-main">
+        <div class="login-icon-ring">🎓</div>
+        <div class="login-heading">Student Sign In</div>
+        <div class="login-sub">Enter your 8-digit Student ID using the keypad below</div>
+        <div class="login-divider"></div>
+        <div class="id-display-row">
+          <span class="id-seg" id="seg0">_</span><span class="id-seg" id="seg1">_</span>
+          <span class="id-seg" id="seg2">_</span><span class="id-seg" id="seg3">_</span>
+          <span class="id-sep-char">–</span>
+          <span class="id-seg" id="seg4">_</span><span class="id-seg" id="seg5">_</span>
+          <span class="id-seg" id="seg6">_</span><span class="id-seg" id="seg7">_</span>
+        </div>
+        <div class="id-dots-row">
+          <div class="id-dot" id="pd0"></div><div class="id-dot" id="pd1"></div>
+          <div class="id-dot" id="pd2"></div><div class="id-dot" id="pd3"></div>
+          <div class="id-dot-gap"></div>
+          <div class="id-dot" id="pd4"></div><div class="id-dot" id="pd5"></div>
+          <div class="id-dot" id="pd6"></div><div class="id-dot" id="pd7"></div>
+        </div>
+        <div class="login-error" id="login-error"></div>
+        <div class="pin-pad">
+          <button class="pin-btn" onclick="idPress('1')">1</button>
+          <button class="pin-btn" onclick="idPress('2')">2</button>
+          <button class="pin-btn" onclick="idPress('3')">3</button>
+          <button class="pin-btn" onclick="idPress('4')">4</button>
+          <button class="pin-btn" onclick="idPress('5')">5</button>
+          <button class="pin-btn" onclick="idPress('6')">6</button>
+          <button class="pin-btn" onclick="idPress('7')">7</button>
+          <button class="pin-btn" onclick="idPress('8')">8</button>
+          <button class="pin-btn" onclick="idPress('9')">9</button>
+          <button class="pin-btn pin-btn-clear" onclick="idClear()">CLR</button>
+          <button class="pin-btn" onclick="idPress('0')">0</button>
+          <button class="pin-btn pin-btn-back" onclick="idBackspace()">⌫</button>
+        </div>
+        <div class="login-hint">Demo IDs: <strong>20241234</strong> · <strong>20234567</strong> · <strong>20227890</strong></div>
+        <button class="back-btn login-back-btn" onclick="navigateTo('dashboard')">← Back to Dashboard</button>
+      </div>
+
+      <!-- Success card -->
+      <div class="login-card login-success-card" id="login-success-card" style="display:none;">
+        <div class="login-icon-ring success-ring">✅</div>
+        <div class="login-heading">Welcome Back!</div>
+        <div class="login-sub" id="login-success-msg">Authentication successful.</div>
+        <div class="login-divider"></div>
+        <div class="login-profile-row">
+          <div class="login-profile-avatar" id="login-avatar">JD</div>
+          <div>
+            <div class="login-profile-name" id="login-profile-name">John Doe</div>
+            <div class="login-profile-id" id="login-profile-id">20241234</div>
+            <div class="login-profile-badge">✔ Verified Student</div>
+          </div>
+        </div>
+        <button class="login-btn" onclick="navigateTo('dashboard')" style="margin-top:28px;">Go to Dashboard &nbsp;→</button>
+        <button class="back-btn login-back-btn" onclick="logOut()" style="margin-top:12px;">⏏ Log Out</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div>SECURE AUTHENTICATION · ACTIVE</div>
+      <div><span class="status-time" id="login-status-time"></span> · SESSION ACTIVE</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SCHEDULE PAGE ═══════════════════ -->
+  <div id="page-schedule" class="page">
+    <div class="dash-header">
+      <div class="dash-logo-row">
+        <div class="dash-logo-ring">
+          <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+            alt="LIU" onerror="this.style.display='none';this.parentElement.innerHTML='🎓'" />
+        </div>
+        <div>
+          <div class="dash-kiosk-label">Lebanese International University</div>
+          <div class="dash-name">Smart Campus <span>Kiosk</span></div>
+        </div>
+      </div>
+      <div class="dash-right">
+        <div class="dash-gesture-pill"><span class="dash-gesture-pill-icon">👋</span>GESTURE READY</div>
+        <div class="dash-datetime">
+          <div class="dash-time" id="sched-time-big"></div>
+          <div id="sched-date"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-page-top-row">
+      <div>
+        <div class="inner-page-title">📅 My Schedule</div>
+        <div class="inner-page-sub" id="sched-student-name">Weekly class timetable</div>
+      </div>
+      <button class="back-btn" onclick="navigateTo('dashboard')">← Dashboard</button>
+    </div>
+
+    <div class="inner-page-content" id="schedule-content">
+      <!-- Populated by JS -->
+    </div>
+
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div>MY SCHEDULE · LIVE DATA</div>
+      <div><span class="status-time" id="sched-status-time"></span> · SESSION ACTIVE</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ NEWS PAGE ═══════════════════ -->
+  <div id="page-news" class="page">
+    <div class="dash-header">
+      <div class="dash-logo-row">
+        <div class="dash-logo-ring">
+          <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+            alt="LIU" onerror="this.style.display='none';this.parentElement.innerHTML='🎓'" />
+        </div>
+        <div>
+          <div class="dash-kiosk-label">Lebanese International University</div>
+          <div class="dash-name">Smart Campus <span>Kiosk</span></div>
+        </div>
+      </div>
+      <div class="dash-right">
+        <div class="dash-gesture-pill"><span class="dash-gesture-pill-icon">👋</span>GESTURE READY</div>
+        <div class="dash-datetime">
+          <div class="dash-time" id="news-time-big"></div>
+          <div id="news-date"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-page-top-row">
+      <div>
+        <div class="inner-page-title">📢 Campus News</div>
+        <div class="inner-page-sub">Latest announcements and events from LIU</div>
+      </div>
+      <button class="back-btn" onclick="navigateTo('dashboard')">← Dashboard</button>
+    </div>
+
+    <div class="inner-page-content" id="news-content">
+      <!-- Populated by JS -->
+    </div>
+
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div>CAMPUS ANNOUNCEMENTS · LIVE</div>
+      <div><span class="status-time" id="news-status-time"></span> · SESSION ACTIVE</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
