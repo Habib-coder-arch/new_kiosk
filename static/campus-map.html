@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>LIU Campus Navigator</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ═══════════════════════════════════════════════════════
+   RESET & ROOT VARS
+═══════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060b14;
+  --panel:#0b1623;
+  --panel2:#0f1e2d;
+  --border:#172334;
+  --border2:#1e3048;
+  --accent:#e8a020;
+  --accent2:#1a9fff;
+  --green:#22d47a;
+  --text:#d4e4f4;
+  --muted:#3d6080;
+  --hover:#0e1f30;
+  --r:10px;
+  --sb-w:272px;       /* sidebar width on desktop */
+}
+
+html,body{
+  height:100%; width:100%;
+  font-family:'Outfit',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ROOT LAYOUT  — sidebar left, map right, fills iframe
+═══════════════════════════════════════════════════════ */
+#root{
+  display:flex;
+  width:100%; height:100%;
+  position:relative;
+  overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════ */
+#sidebar{
+  width:var(--sb-w);
+  min-width:var(--sb-w);
+  flex-shrink:0;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  z-index:30;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+
+/* Search */
+.sb-top{padding:11px 11px 8px;flex-shrink:0;position:relative;}
+#sb-search{
+  width:100%;padding:9px 36px 9px 13px;
+  background:var(--panel2);
+  border:1.5px solid var(--border2);
+  border-radius:var(--r);
+  color:var(--text);
+  font-family:inherit;font-size:13px;outline:none;
+  transition:border-color .2s;
+}
+#sb-search::placeholder{color:var(--muted);}
+#sb-search:focus{border-color:var(--accent);}
+.sb-ico{
+  position:absolute;right:21px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;
+}
+
+/* Category pills */
+#sb-cats{
+  padding:0 11px 9px;
+  display:flex;gap:4px;flex-wrap:wrap;
+  flex-shrink:0;
+  border-bottom:1px solid var(--border);
+}
+.cat-pill{
+  padding:4px 11px;border-radius:20px;
+  border:1.5px solid var(--border2);
+  font-size:10px;font-weight:700;
+  color:var(--muted);cursor:pointer;
+  transition:all .15s;background:transparent;
+  font-family:inherit;letter-spacing:.04em;
+}
+.cat-pill:hover{border-color:var(--accent);color:var(--accent);}
+.cat-pill.active{background:var(--accent);border-color:var(--accent);color:#000;}
+
+/* Count row */
+#sb-count{
+  padding:7px 14px 3px;
+  font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);flex-shrink:0;
+}
+
+/* Building list */
+#sb-list{flex:1;overflow-y:auto;padding:0 5px 6px;}
+#sb-list::-webkit-scrollbar{width:3px;}
+#sb-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+#sb-nores{display:none;padding:24px 14px;text-align:center;color:var(--muted);font-size:12px;}
+
+.bitem{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 9px;border-radius:var(--r);
+  cursor:pointer;transition:background .1s;
+  margin-bottom:2px;border:1px solid transparent;
+}
+.bitem:hover {background:var(--hover);border-color:var(--border2);}
+.bitem.active{background:var(--hover);border-color:var(--accent);}
+.bico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.binfo{flex:1;min-width:0;}
+.bname{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bcat{font-size:10px;color:var(--muted);margin-top:1px;}
+.barr{color:var(--border2);flex-shrink:0;transition:color .15s;}
+.bitem:hover .barr,.bitem.active .barr{color:var(--accent);}
+
+/* Building detail panel */
+#sb-detail{
+  display:none;flex-direction:column;gap:8px;
+  background:var(--panel2);
+  border-top:2px solid var(--accent);
+  padding:12px 13px;flex-shrink:0;
+}
+#sb-detail.on{display:flex;}
+.d-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.d-name{font-size:13px;font-weight:800;color:var(--text);line-height:1.2;}
+.d-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;transition:color .15s;}
+.d-close:hover{color:var(--text);}
+.d-badge{
+  display:inline-flex;font-size:9px;font-weight:700;
+  padding:3px 10px;border-radius:20px;width:fit-content;
+  border-left:3px solid currentColor;
+}
+.d-hours{font-size:10px;color:var(--muted);font-family:monospace;}
+.d-zoom-btn{
+  width:100%;padding:9px;border-radius:8px;
+  background:var(--panel);border:1.5px solid var(--border2);
+  font-size:11px;font-weight:700;cursor:pointer;
+  letter-spacing:.04em;text-transform:uppercase;
+  transition:all .18s;color:var(--muted);font-family:inherit;
+}
+.d-zoom-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+
+/* ═══════════════════════════════════════════════════════
+   MAP AREA
+═══════════════════════════════════════════════════════ */
+#map-wrap{
+  flex:1;position:relative;min-width:0;
+  background:var(--bg);
+}
+#leaflet-map{width:100%;height:100%;}
+
+/* Overlay control buttons */
+#map-controls{
+  position:absolute;top:12px;right:12px;z-index:800;
+  display:flex;flex-direction:column;gap:7px;
+}
+.mc-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--r);
+  background:rgba(6,11,20,.97);
+  border:1.5px solid var(--border2);
+  color:var(--text);font-size:12px;font-weight:700;
+  cursor:pointer;letter-spacing:.06em;
+  backdrop-filter:blur(14px);
+  transition:all .18s;white-space:nowrap;
+  min-width:138px;
+  box-shadow:0 4px 18px rgba(0,0,0,.75);
+  font-family:inherit;
+}
+.mc-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.1);}
+.mc-btn.active{background:rgba(232,160,32,.18);border-color:var(--accent);color:var(--accent);}
+.mc-icon{font-size:14px;}
+
+/* Legend */
+#legend{
+  position:absolute;bottom:26px;right:12px;z-index:800;
+  background:rgba(6,11,20,.97);
+  border:1px solid var(--border2);
+  border-radius:var(--r);padding:10px 13px;
+  backdrop-filter:blur(14px);
+  box-shadow:0 4px 16px rgba(0,0,0,.7);
+}
+.leg-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;color:var(--muted);font-size:10px;letter-spacing:.04em;}
+.leg-row:last-child{margin-bottom:0;}
+.leg-line{height:3px;width:20px;border-radius:2px;flex-shrink:0;}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* Status bar */
+#statusbar{
+  position:absolute;bottom:0;left:0;right:0;z-index:800;
+  background:rgba(6,11,20,.94);
+  border-top:1px solid var(--border);
+  padding:4px 12px;
+  display:flex;align-items:center;gap:8px;
+  font-size:9px;color:var(--muted);
+  letter-spacing:.08em;font-family:monospace;
+}
+.sdot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  animation:sdpulse 2s infinite;
+}
+@keyframes sdpulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE SIDEBAR TOGGLE BUTTON
+   Visible only on small screens — slides the sidebar in/out
+═══════════════════════════════════════════════════════ */
+#sb-toggle{
+  display:none; /* hidden on desktop */
+  position:absolute;
+  top:12px;left:12px;z-index:900;
+  width:42px;height:42px;border-radius:10px;
+  background:rgba(6,11,20,.97);
+  border:1.5px solid var(--border2);
+  color:var(--text);font-size:20px;
+  cursor:pointer;align-items:center;justify-content:center;
+  backdrop-filter:blur(14px);
+  box-shadow:0 4px 16px rgba(0,0,0,.7);
+  transition:all .18s;
+}
+#sb-toggle:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Mobile backdrop */
+#sb-backdrop{
+  display:none;position:fixed;inset:0;z-index:20;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(2px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LEAFLET OVERRIDES
+═══════════════════════════════════════════════════════ */
+.leaflet-control-zoom{border:none !important;box-shadow:none !important;}
+.leaflet-control-zoom a{
+  background:rgba(6,11,20,.97) !important;
+  color:var(--text) !important;
+  border:1.5px solid var(--border2) !important;
+  border-radius:8px !important;
+  font-size:18px !important;
+  width:36px !important;height:36px !important;line-height:34px !important;
+  font-weight:700 !important;
+  box-shadow:0 3px 12px rgba(0,0,0,.65) !important;
+  display:block !important;margin-bottom:4px !important;
+  transition:all .18s !important;
+}
+.leaflet-control-zoom a:hover{
+  background:rgba(232,160,32,.18) !important;
+  color:var(--accent) !important;
+  border-color:var(--accent) !important;
+}
+.leaflet-control-zoom-in {border-radius:8px 8px 0 0 !important;}
+.leaflet-control-zoom-out{border-radius:0 0 8px 8px !important;margin-bottom:0 !important;}
+.leaflet-control-attribution{
+  background:rgba(6,11,20,.8) !important;
+  color:var(--muted) !important;font-size:8px !important;
+}
+.leaflet-control-attribution a{color:var(--muted) !important;}
+
+/* Popup */
+.leaflet-popup-content-wrapper{
+  background:var(--panel) !important;
+  border:1px solid var(--border2) !important;
+  border-radius:12px !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.9) !important;
+  padding:0 !important;min-width:170px;
+}
+.leaflet-popup-content{margin:0 !important;}
+.leaflet-popup-tip{background:var(--panel) !important;}
+.leaflet-popup-close-button{color:var(--muted) !important;font-size:17px !important;padding:6px 8px !important;}
+.leaflet-popup-close-button:hover{color:var(--text) !important;}
+.pop-wrap{padding:11px 13px;}
+.pop-name{font-weight:800;font-size:13px;line-height:1.3;margin-bottom:3px;}
+.pop-cat{font-size:9px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px;font-family:monospace;}
+.pop-hours{font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:5px;font-family:monospace;}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — PHONE / SMALL TABLET
+   Sidebar becomes a slide-in drawer from the left
+═══════════════════════════════════════════════════════ */
+@media (max-width: 680px){
+  /* Sidebar becomes a fixed overlay drawer */
+  #sidebar{
+    position:fixed;
+    top:0;left:0;bottom:0;
+    width:88vw;max-width:320px;
+    transform:translateX(-105%);
+    box-shadow:6px 0 32px rgba(0,0,0,.8);
+  }
+  #sidebar.sb-open{transform:translateX(0);}
+  #sb-backdrop.sb-open{display:block;}
+
+  /* Map fills full width */
+  #map-wrap{width:100%;}
+
+  /* Toggle button visible */
+  #sb-toggle{display:flex;}
+
+  /* Shift map controls right to avoid toggle button overlap */
+  #map-controls{top:12px;right:10px;}
+
+  /* Smaller control buttons on phone */
+  .mc-btn{padding:8px 12px;min-width:110px;font-size:11px;}
+
+  /* Legend: smaller, bottom-right above status bar */
+  #legend{bottom:24px;right:10px;padding:8px 10px;}
+  .leg-row{font-size:9px;gap:6px;margin-bottom:4px;}
+  .leg-line{width:16px;}
+  .leg-dot{width:8px;height:8px;}
+}
+
+@media (max-width: 400px){
+  #sidebar{width:94vw;}
+  .mc-btn{min-width:90px;font-size:10px;padding:7px 9px;}
+  #map-controls{gap:5px;}
+}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div id="sidebar">
+    <div class="sb-top">
+      <input id="sb-search" type="text" placeholder="Search buildings…" autocomplete="off"/>
+      <svg class="sb-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </div>
+
+    <div id="sb-cats">
+      <button class="cat-pill active" data-cat="all">All</button>
+      <button class="cat-pill" data-cat="academic">Academic</button>
+      <button class="cat-pill" data-cat="sports">Sports</button>
+      <button class="cat-pill" data-cat="services">Services</button>
+      <button class="cat-pill" data-cat="admin">Admin</button>
+    </div>
+
+    <div id="sb-count">14 Locations</div>
+    <div id="sb-list"></div>
+    <div id="sb-nores">No results found.</div>
+
+    <div id="sb-detail">
+      <div class="d-top">
+        <div class="d-name" id="d-name"></div>
+        <button class="d-close" id="d-close">&times;</button>
+      </div>
+      <div class="d-badge" id="d-badge"></div>
+      <div class="d-hours" id="d-hours"></div>
+      <button class="d-zoom-btn" id="d-zoom">🔍 Zoom to Building</button>
+    </div>
+  </div>
+
+  <!-- ══ MAP ══ -->
+  <div id="map-wrap">
+    <!-- Mobile: toggle button to open sidebar drawer -->
+    <button id="sb-toggle" aria-label="Open building list" onclick="toggleSidebar()">☰</button>
+
+    <div id="leaflet-map"></div>
+
+    <!-- Tile + view controls -->
+    <div id="map-controls">
+      <button class="mc-btn active" id="btn-sat"><span class="mc-icon">🛰</span> Satellite</button>
+      <button class="mc-btn" id="btn-streets"><span class="mc-icon">🗺</span> Streets</button>
+      <button class="mc-btn" id="btn-fit"><span class="mc-icon">⊙</span> Fit Campus</button>
+    </div>
+
+    <!-- Legend -->
+    <div id="legend">
+      <div class="leg-row"><div class="leg-line" style="background:#d4b86a"></div>Main road</div>
+      <div class="leg-row"><div class="leg-line" style="background:#8ab4d4;opacity:.9"></div>Internal path</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#e8a020"></div>Admin</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#1a9fff"></div>Academic</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#22d47a"></div>Sports</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#b06fd8"></div>Services</div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="statusbar">
+      <div class="sdot"></div>
+      <span id="status-txt">Loading map…</span>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile backdrop (tap to close sidebar) -->
+<div id="sb-backdrop" onclick="closeSidebar()"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════
+   MOBILE SIDEBAR TOGGLE
+══════════════════════════════════════════════════════ */
+function toggleSidebar(){
+  var sb=document.getElementById('sidebar');
+  var bd=document.getElementById('sb-backdrop');
+  var open=sb.classList.contains('sb-open');
+  if(open){closeSidebar();}else{
+    sb.classList.add('sb-open');
+    bd.classList.add('sb-open');
+  }
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('sb-open');
+  document.getElementById('sb-backdrop').classList.remove('sb-open');
+}
+
+/* ══════════════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════════════ */
+var CENTER=[33.69200,35.85087], ZOOM=17, ZOOM_MIN=15, ZOOM_MAX=20;
+
+var BUILDINGS=[
+  {id:'stadium',   name:'Stadium',            cat:'sports',   color:'#22d47a',lat:33.69326,lng:35.84980,hours:'Mon-Sat 7:00–19:00',emoji:'🏟'},
+  {id:'indoor',    name:'Indoor Sports Court',cat:'sports',   color:'#22d47a',lat:33.69200,lng:35.85191,hours:'Mon-Sat 7:00–21:00',emoji:'🏀'},
+  {id:'diner',     name:'Dining Hall',        cat:'services', color:'#b06fd8',lat:33.69256,lng:35.85087,hours:'Daily 7:00–21:00',  emoji:'🍽'},
+  {id:'blockB',    name:'Block B',            cat:'academic', color:'#1a9fff',lat:33.69163,lng:35.85149,hours:'Mon-Sat 8:00–20:00',emoji:'🏫'},
+  {id:'blockC',    name:'Block C',            cat:'academic', color:'#1a9fff',lat:33.69135,lng:35.85237,hours:'Mon-Sat 8:00–20:00',emoji:'🏫'},
+  {id:'playground',name:'Playground',         cat:'sports',   color:'#22d47a',lat:33.69174,lng:35.85236,hours:'Daily 7:00–20:00',  emoji:'🎾'},
+  {id:'clock',     name:'Clock Tower',        cat:'admin',    color:'#e8a020',lat:33.69203,lng:35.85048,hours:'24/7',              emoji:'🕰'},
+  {id:'pool',      name:'Swimming Pool',      cat:'sports',   color:'#22d47a',lat:33.69238,lng:35.85135,hours:'Mon-Sat 8:00–18:00',emoji:'🏊'},
+  {id:'inn',       name:'LIU Inn East',       cat:'services', color:'#b06fd8',lat:33.69158,lng:35.85312,hours:'24/7',              emoji:'🏠'},
+  {id:'admin',     name:'Administration',     cat:'admin',    color:'#e8a020',lat:33.69275,lng:35.84885,hours:'Mon-Fri 8:00–17:00',emoji:'🏛'},
+  {id:'parking',   name:'Parking',            cat:'services', color:'#b06fd8',lat:33.69122,lng:35.85146,hours:'24/7',              emoji:'🚗'},
+  {id:'dorm',      name:'Dormitory',          cat:'services', color:'#b06fd8',lat:33.69159,lng:35.85046,hours:'24/7',              emoji:'🛏'},
+  {id:'gatein',    name:'Main Gate (Entry)',  cat:'admin',    color:'#e8a020',lat:33.69265,lng:35.84848,hours:'24/7',              emoji:'🚪'},
+  {id:'gateout',   name:'Exit Gate',          cat:'admin',    color:'#e8a020',lat:33.69100,lng:35.85231,hours:'24/7',              emoji:'🚪'},
+];
+
+var LABELS={
+  stadium:'STD',indoor:'ISC',diner:'DIN',blockB:'B',blockC:'C',
+  playground:'PG',clock:'CLK',pool:'SWM',inn:'INN',
+  admin:'ADM',parking:'PKG',dorm:'DRM',gatein:'IN',gateout:'OUT'
+};
+
+var ROADS=[
+  {t:'main',c:[[33.69100,35.84820],[33.69180,35.84820],[33.69265,35.84848],[33.69275,35.84870],[33.69300,35.84900],[33.69330,35.84940],[33.69355,35.84990],[33.69360,35.85080],[33.69355,35.85180],[33.69340,35.85260]]},
+  {t:'main',c:[[33.69340,35.85260],[33.69280,35.85310],[33.69200,35.85340],[33.69130,35.85320],[33.69100,35.85290],[33.69100,35.85231],[33.69095,35.85150],[33.69090,35.85020],[33.69100,35.84870],[33.69100,35.84820]]},
+  {t:'path',c:[[33.69290,35.85060],[33.69256,35.85060],[33.69203,35.85048],[33.69159,35.85046],[33.69122,35.85050]]},
+  {t:'path',c:[[33.69256,35.85060],[33.69256,35.85100],[33.69238,35.85135],[33.69200,35.85160],[33.69163,35.85149],[33.69135,35.85180],[33.69122,35.85146]]},
+  {t:'path',c:[[33.69163,35.85149],[33.69158,35.85230],[33.69135,35.85237],[33.69158,35.85280],[33.69158,35.85312]]}
+];
+
+/* ══════════════════════════════════════════════════════
+   STATE & HELPERS
+══════════════════════════════════════════════════════ */
+var map,satLayer,streetsLayer;
+var markers={},activeId=null,activeCat='all';
+
+function setStatus(t){
+  var el=document.getElementById('status-txt');
+  if(el) el.textContent=t;
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+
+/* ══════════════════════════════════════════════════════
+   MAP INIT
+══════════════════════════════════════════════════════ */
+function initMap(){
+  satLayer=L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Tiles &copy; Esri &mdash; Esri, USGS, NOAA',maxZoom:20,maxNativeZoom:19}
+  );
+  streetsLayer=L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:20,maxNativeZoom:19}
+  );
+
+  map=L.map('leaflet-map',{
+    center:CENTER,
+    zoom:ZOOM,
+    minZoom:ZOOM_MIN,
+    maxZoom:ZOOM_MAX,
+    maxBounds:L.latLngBounds([33.681,35.838],[33.701,35.863]),
+    maxBoundsViscosity:0.92,
+    zoomControl:true,
+    attributionControl:true
+  });
+
+  satLayer.addTo(map);
+  map.zoomControl.setPosition('bottomright');
+
+  /* Campus boundary */
+  L.polygon(
+    [[33.69370,35.84800],[33.69370,35.85360],[33.69070,35.85360],[33.69070,35.84800]],
+    {color:'#e8a020',weight:2,opacity:0.5,fill:true,fillColor:'#e8a020',fillOpacity:0.03,dashArray:'8 6'}
+  ).addTo(map);
+
+  /* Roads */
+  ROADS.forEach(function(r){
+    if(r.t==='main')
+      L.polyline(r.c,{color:'#d4b86a',weight:5,opacity:0.88,lineJoin:'round',lineCap:'round'}).addTo(map);
+    else
+      L.polyline(r.c,{color:'#8ab4d4',weight:2.5,opacity:0.72,dashArray:'7 6',lineJoin:'round',lineCap:'round'}).addTo(map);
+  });
+
+  /* Markers */
+  BUILDINGS.forEach(function(b){
+    var lbl=LABELS[b.id]||b.name.substring(0,3).toUpperCase();
+    var fs=lbl.length>2?'7':lbl.length>1?'8.5':'10';
+    var ty=lbl.length>2?'20.5':'21.5';
+
+    var svg=
+      '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">'
+      +'<defs><filter id="sh'+b.id+'" x="-60%" y="-60%" width="220%" height="220%">'
+      +'<feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,.7)"/></filter></defs>'
+      +'<path d="M15 0C6.7 0 0 6.7 0 15c0 11.2 15 25 15 25S30 26.2 30 15C30 6.7 23.3 0 15 0z"'
+      +' fill="'+b.color+'" filter="url(#sh'+b.id+')"/>'
+      +'<circle cx="15" cy="15" r="9.5" fill="rgba(0,0,0,0.22)"/>'
+      +'<text x="15" y="'+ty+'" text-anchor="middle"'
+      +' font-family="Arial,sans-serif" font-size="'+fs+'" font-weight="900" fill="white">'+lbl+'</text>'
+      +'</svg>';
+
+    var icon=L.divIcon({
+      html:svg,className:'',
+      iconSize:[30,40],iconAnchor:[15,40],popupAnchor:[0,-44]
+    });
+
+    var m=L.marker([b.lat,b.lng],{icon:icon,riseOnHover:true}).addTo(map);
+
+    var popHtml=
+      '<div class="pop-wrap">'
+      +'<div class="pop-name" style="color:'+b.color+'">'+b.name+'</div>'
+      +'<div class="pop-cat" style="color:'+b.color+'">'+cap(b.cat)+'</div>'
+      +'<div class="pop-hours">🕐 '+b.hours+'</div>'
+      +'</div>';
+
+    m.bindPopup(popHtml,{maxWidth:230,closeButton:true});
+    m.on('click',function(){
+      selectBuilding(b.id,false);
+      /* On mobile: close drawer so user can see map */
+      if(window.innerWidth<=680) closeSidebar();
+    });
+    markers[b.id]=m;
+  });
+
+  /* Close popup on map click */
+  map.on('click',function(e){
+    if(!e.originalEvent.target.closest('.leaflet-marker-icon'))
+      map.closePopup();
+  });
+
+  /* Zoom guard */
+  map.on('zoomend',function(){
+    if(map.getZoom()<ZOOM_MIN) map.setZoom(ZOOM_MIN,{animate:false});
+  });
+
+  /* Invalidate size when sidebar opens/closes (avoids grey tiles) */
+  document.getElementById('sidebar').addEventListener('transitionend',function(){
+    map.invalidateSize();
+  });
+
+  /* ── Button wiring ── */
+  document.getElementById('btn-sat').addEventListener('click',function(){
+    if(!map.hasLayer(satLayer))    map.addLayer(satLayer);
+    if( map.hasLayer(streetsLayer))map.removeLayer(streetsLayer);
+    setActiveTileBtn('btn-sat');
+    setStatus('Satellite · Esri World Imagery');
+  });
+  document.getElementById('btn-streets').addEventListener('click',function(){
+    if(!map.hasLayer(streetsLayer))map.addLayer(streetsLayer);
+    if( map.hasLayer(satLayer))    map.removeLayer(satLayer);
+    setActiveTileBtn('btn-streets');
+    setStatus('Streets · OpenStreetMap');
+  });
+  document.getElementById('btn-fit').addEventListener('click',function(){
+    var lats=BUILDINGS.map(function(b){return b.lat;});
+    var lngs=BUILDINGS.map(function(b){return b.lng;});
+    map.fitBounds([
+      [Math.min.apply(null,lats),Math.min.apply(null,lngs)],
+      [Math.max.apply(null,lats),Math.max.apply(null,lngs)]
+    ],{padding:[50,50],animate:true,duration:0.8});
+    setActiveTileBtn(null);
+  });
+
+  /* ── Sidebar wiring ── */
+  document.getElementById('sb-search').addEventListener('input',applyFilter);
+
+  document.querySelectorAll('.cat-pill').forEach(function(p){
+    p.addEventListener('click',function(){
+      document.querySelectorAll('.cat-pill').forEach(function(x){x.classList.remove('active');});
+      p.classList.add('active');
+      activeCat=p.dataset.cat;
+      applyFilter();
+    });
+  });
+
+  document.getElementById('d-close').addEventListener('click',function(){
+    document.getElementById('sb-detail').classList.remove('on');
+    document.querySelectorAll('.bitem').forEach(function(el){el.classList.remove('active');});
+    if(activeId&&markers[activeId]) markers[activeId].closePopup();
+    activeId=null;
+    setStatus('Ready');
+  });
+
+  renderList(BUILDINGS);
+  setStatus('Satellite · Esri World Imagery · '+BUILDINGS.length+' locations');
+}
+
+function setActiveTileBtn(id){
+  ['btn-sat','btn-streets','btn-fit'].forEach(function(b){
+    var el=document.getElementById(b);
+    if(el) el.classList.toggle('active',b===id);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   SELECT BUILDING
+══════════════════════════════════════════════════════ */
+function selectBuilding(id,fly){
+  if(fly===undefined) fly=true;
+  var b=BUILDINGS.find(function(x){return x.id===id;});
+  if(!b) return;
+  activeId=id;
+
+  if(fly) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),18.5),{duration:0.8,easeLinearity:0.25});
+  if(markers[id]) markers[id].openPopup();
+
+  document.querySelectorAll('.bitem').forEach(function(el){el.classList.remove('active');});
+  var li=document.querySelector('.bitem[data-id="'+id+'"]');
+  if(li){li.classList.add('active');li.scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+  document.getElementById('d-name').textContent=b.name;
+  var badge=document.getElementById('d-badge');
+  badge.textContent=cap(b.cat);
+  badge.style.background=b.color+'1f';
+  badge.style.color=b.color;
+
+  document.getElementById('d-hours').textContent='🕐 '+b.hours;
+  document.getElementById('sb-detail').classList.add('on');
+  document.getElementById('d-zoom').onclick=function(){
+    map.flyTo([b.lat,b.lng],19,{duration:0.7});
+  };
+  setStatus(b.name+' · '+cap(b.cat));
+}
+
+/* ══════════════════════════════════════════════════════
+   FILTER & LIST
+══════════════════════════════════════════════════════ */
+function applyFilter(){
+  var q=document.getElementById('sb-search').value.toLowerCase().trim();
+  var filtered=BUILDINGS.filter(function(b){
+    return(activeCat==='all'||b.cat===activeCat)&&(!q||b.name.toLowerCase().includes(q));
+  });
+  BUILDINGS.forEach(function(b){
+    if(!markers[b.id]) return;
+    var show=filtered.some(function(f){return f.id===b.id;});
+    if(show){ if(!map.hasLayer(markers[b.id])) markers[b.id].addTo(map); }
+    else    { map.removeLayer(markers[b.id]); }
+  });
+  renderList(filtered);
+}
+
+function renderList(list){
+  var el=document.getElementById('sb-list');
+  var no=document.getElementById('sb-nores');
+  var rh=document.getElementById('sb-count');
+  el.innerHTML='';
+  if(!list.length){no.style.display='block';rh.textContent='0 Locations';return;}
+  no.style.display='none';
+  rh.textContent=list.length+' Location'+(list.length!==1?'s':'');
+  list.forEach(function(b){
+    var d=document.createElement('div');
+    d.className='bitem'+(b.id===activeId?' active':'');
+    d.dataset.id=b.id;
+    d.innerHTML=
+      '<div class="bico" style="background:'+b.color+'1a;color:'+b.color+'">'+b.emoji+'</div>'
+      +'<div class="binfo"><div class="bname">'+b.name+'</div><div class="bcat">'+cap(b.cat)+'</div></div>'
+      +'<svg class="barr" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">'
+      +'<polyline points="9 18 15 12 9 6"/></svg>';
+    d.addEventListener('click',function(){
+      selectBuilding(b.id);
+      if(window.innerWidth<=680) closeSidebar();
+    });
+    el.appendChild(d);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════ */
+window.addEventListener('load',initMap);
+</script>
+</body>
+</html>

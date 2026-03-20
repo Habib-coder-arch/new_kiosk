@@ -588,6 +588,75 @@ html, body {
 .news-meta { font-size: 11px; color: rgba(120,180,220,0.4); margin-top: 12px; letter-spacing: 0.04em; }
 
 /* ══════════════════════════════════════════════════════════════════
+   MAP PAGE
+   ══════════════════════════════════════════════════════════════════ */
+
+/* The map page is a full-height flex column — no scrolling on the host */
+#page-map.page-map-layout {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;            /* never scroll the outer page shell */
+  height: 100vh;
+}
+
+/* Compact the title row on the map page — gives more room to the map */
+#page-map .map-top-row {
+  padding-top: 12px;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+/* Iframe wrapper — flex child that fills ALL remaining space */
+.map-embed-wrap {
+  flex: 1;
+  position: relative;
+  min-height: 0;               /* essential — lets flex item shrink below content */
+  margin: 0 20px;
+  margin-bottom: 54px;         /* clear the fixed status bar (≈44px + breathing room) */
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 120, 212, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(0, 120, 212, 0.06),
+    0 12px 48px rgba(0, 0, 0, 0.55);
+  animation: fade-up 0.45s ease both 0.08s;
+}
+
+/* The iframe itself — fills the wrapper absolutely */
+#campus-map-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #06090d;
+}
+
+/* Mobile: tighten margins so map gets maximum height */
+@media (max-width: 800px) {
+  .map-embed-wrap {
+    margin: 0 10px;
+    margin-bottom: 48px;
+    border-radius: 12px;
+  }
+  #page-map .map-top-row {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+}
+@media (max-width: 600px) {
+  .map-embed-wrap {
+    margin: 0 6px;
+    margin-bottom: 44px;
+    border-radius: 10px;
+  }
+  #page-map .inner-page-title { font-size: 18px; }
+  #page-map .inner-page-sub   { font-size: 10px; }
+  #page-map .map-top-row      { padding: 6px 14px 4px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    KEYFRAMES
    ══════════════════════════════════════════════════════════════════ */
 @keyframes pulse-bg { from{opacity:0.7} to{opacity:1} }

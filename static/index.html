@@ -5,6 +5,182 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LIU Smart Campus Kiosk</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- ═══════════════════ GESTURE PANEL STYLES ═══════════════════ -->
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       GESTURE SYSTEM — cursor, panel, and card/button highlights
+    ══════════════════════════════════════════════════════════════ */
+
+    /* ── Virtual cursor ──────────────────────────────────────────── */
+    #gp-cursor {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      width: 60px; height: 60px;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    /* Dwell fill ring — filled via conic-gradient in JS */
+    #gp-cursor-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 210, 255, 0.35);
+      transition: box-shadow 0.12s ease;
+    }
+    /* Inner dot */
+    #gp-cursor-dot {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 10px; height: 10px;
+      margin: -5px;
+      background: #00d4ff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #00d4ff, 0 0 22px rgba(0,212,255,0.6);
+    }
+
+    /* ── Floating gesture panel ──────────────────────────────────── */
+    .gesture-panel {
+      position: fixed;
+      bottom: 50px;
+      right: 14px;
+      z-index: 2000;
+      width: 216px;
+      background: rgba(2, 11, 24, 0.93);
+      border: 1px solid rgba(0, 120, 212, 0.32);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      box-shadow:
+        0 10px 36px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(0,120,212,0.08);
+      overflow: hidden;
+      transition: box-shadow 0.25s ease;
+    }
+    .gesture-panel.gp-minimised .gp-body { display: none; }
+    .gesture-panel.gp-minimised          { border-radius: 12px; }
+
+    /* Header */
+    .gp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 11px;
+      border-bottom: 1px solid rgba(0,120,212,0.15);
+      cursor: pointer; user-select: none;
+    }
+    .gp-title {
+      display: flex; align-items: center; gap: 7px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase; color: #90c8f0;
+    }
+    .gp-status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(120,180,220,0.25); flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .gp-dot-on  { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: blink 2.2s ease-in-out infinite; }
+    .gp-dot-err { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .gp-controls { display: flex; align-items: center; gap: 5px; }
+    .gp-toggle-btn {
+      background: rgba(0,120,212,0.14);
+      border: 1px solid rgba(0,120,212,0.32);
+      border-radius: 6px; color: #4ea8de;
+      font-size: 10px; font-weight: 700;
+      padding: 3px 8px; cursor: pointer;
+      transition: all 0.2s; letter-spacing: 0.05em;
+    }
+    .gp-toggle-btn:hover { background: rgba(0,120,212,0.26); }
+    .gp-toggle-btn.gp-on {
+      background: rgba(34,197,94,0.16);
+      border-color: rgba(34,197,94,0.42); color: #4ade80;
+    }
+    .gp-min-btn {
+      background: none; border: none;
+      color: rgba(120,180,220,0.38);
+      font-size: 13px; line-height: 1;
+      cursor: pointer; padding: 2px 4px; transition: color 0.2s;
+    }
+    .gp-min-btn:hover { color: #90c8f0; }
+
+    /* Body */
+    .gp-body { padding: 10px 10px 12px; }
+
+    /* Camera preview */
+    .gp-cam-wrap {
+      position: relative;
+      width: 196px; height: 147px;
+      border-radius: 10px; overflow: hidden;
+      background: #010810;
+      border: 1px solid rgba(0,120,212,0.18);
+      margin-bottom: 8px;
+    }
+    #gp-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; opacity: 0;
+    }
+    #gp-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+    .gp-cam-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(1,8,16,0.88);
+      border-radius: 10px;
+      transition: opacity 0.35s ease;
+    }
+    .gp-cam-msg { font-size: 11px; color: rgba(120,180,220,0.5); text-align: center; line-height: 1.75; }
+
+    /* Detected label */
+    .gp-detected {
+      text-align: center;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px; font-weight: 600;
+      color: #d8eefa; min-height: 18px; margin-bottom: 7px;
+      letter-spacing: 0.02em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Hold / dwell progress bar (for open_hand hold) */
+    .gp-progress-track {
+      width: 100%; height: 3px;
+      background: rgba(0,120,212,0.14);
+      border-radius: 2px; overflow: hidden; margin-bottom: 10px;
+    }
+    .gp-progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #0078d4, #00d4ff);
+      border-radius: 2px; transition: width 0.06s linear;
+    }
+
+    /* Legend */
+    .gp-legend { display: flex; flex-direction: column; gap: 4px; }
+    .gp-leg-item {
+      font-size: 10.5px; color: rgba(120,180,220,0.58);
+      display: flex; align-items: center; gap: 7px; line-height: 1.4;
+    }
+    .gp-leg-item span { font-size: 13px; }
+
+    /* ── Cursor dwell highlight on hovered elements ───────────── */
+    .nav-card.gp-hover {
+      border-color: rgba(0,210,255,0.6) !important;
+      box-shadow:
+        0 0 0 2px rgba(0,210,255,0.18),
+        0 0 28px rgba(0,210,255,0.15),
+        inset 0 0 20px rgba(0,210,255,0.04) !important;
+      transform: translateY(-4px) scale(1.01) !important;
+      transition: all 0.15s ease !important;
+    }
+    .pin-btn.gp-hover {
+      background: rgba(0,180,255,0.18) !important;
+      border-color: rgba(0,210,255,0.65) !important;
+      color: #fff !important;
+      box-shadow: 0 0 0 2px rgba(0,210,255,0.22), 0 0 12px rgba(0,210,255,0.18) !important;
+      transform: scale(1.06) !important;
+      transition: all 0.12s ease !important;
+    }
+  </style>
 </head>
 <body>
 
@@ -80,7 +256,7 @@
     </div>
 
     <div class="dash-grid-wrap">
-      <div class="nav-card card-map">
+      <div class="nav-card card-map" onclick="navigateTo('map')">
         <div class="card-icon-wrap">🗺️</div>
         <div class="card-title">Campus Map</div>
         <div class="card-desc">Navigate buildings, classrooms, labs, offices, cafeterias, and facilities with an interactive real-time map.</div>
@@ -299,6 +475,146 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ CAMPUS MAP PAGE ═══════════════════ -->
+  <!-- ═══════════════════ MAP PAGE ═══════════════════ -->
+  <div id="page-map" class="page page-map-layout">
+
+    <!-- Header — identical pattern to other inner pages -->
+    <div class="dash-header">
+      <div class="dash-logo-row">
+        <div class="dash-logo-ring">
+          <img src="https://th.bing.com/th/id/OIP.jfDK4yIBdm6EgJj3TlBufwAAAA?o=7&rm=3&rs=1&pid=ImgDetMain"
+            alt="LIU" onerror="this.style.display='none';this.parentElement.innerHTML='🎓'" />
+        </div>
+        <div>
+          <div class="dash-kiosk-label">Lebanese International University</div>
+          <div class="dash-name">Smart Campus <span>Kiosk</span></div>
+        </div>
+      </div>
+      <div class="dash-right">
+        <div class="dash-gesture-pill"><span class="dash-gesture-pill-icon">👋</span>GESTURE READY</div>
+        <div class="dash-datetime">
+          <div class="dash-time" id="map-time-big"></div>
+          <div id="map-date"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Title row — uses map-top-row so style.css can compact it -->
+    <div class="inner-page-top-row map-top-row">
+      <div>
+        <div class="inner-page-title">🗺️ Campus Map</div>
+        <div class="inner-page-sub">LIU Bekaa Campus — Al-Khiyara · Interactive Navigator</div>
+      </div>
+      <button class="back-btn" onclick="navigateTo('dashboard')">← Dashboard</button>
+    </div>
+
+    <!-- Iframe wrapper — fills all remaining vertical space -->
+    <div class="map-embed-wrap">
+      <iframe
+        id="campus-map-frame"
+        src="campus-map.html"
+        title="LIU Campus Navigator"
+        loading="lazy"
+        allowfullscreen
+      ></iframe>
+    </div>
+
+    <div class="status-bar">
+      <div><span class="status-dot"></span>KIOSK ONLINE · LIU CAMPUS</div>
+      <div>CAMPUS MAP · INTERACTIVE NAVIGATOR</div>
+      <div><span class="status-time" id="map-status-time"></span> · SESSION ACTIVE</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ VIRTUAL CURSOR ═══════════════════════ -->
+  <div id="gp-cursor">
+    <div id="gp-cursor-ring"></div>
+    <div id="gp-cursor-dot"></div>
+  </div>
+
+  <!-- ═══════════════════ GESTURE CONTROL PANEL ═══════════════════
+       Fixed overlay — visible on all pages.
+       Starts minimised; click the header to expand.
+       Click "Enable" to start the camera and gesture system.
+  ══════════════════════════════════════════════════════════════════ -->
+  <div id="gesture-panel" class="gesture-panel gp-minimised">
+
+    <!-- Header (always visible, click to expand/collapse body) -->
+    <div class="gp-header" onclick="minimiseGesturePanel()">
+      <div class="gp-title">
+        <span class="gp-status-dot" id="gp-status-dot"></span>
+        <span>👋 Gesture Control</span>
+      </div>
+      <div class="gp-controls" onclick="event.stopPropagation()">
+        <button class="gp-toggle-btn" id="gp-toggle-btn" onclick="toggleGesture()">Enable</button>
+        <button class="gp-min-btn"    title="Collapse" onclick="minimiseGesturePanel()">▾</button>
+      </div>
+    </div>
+
+    <!-- Body (hidden when minimised) -->
+    <div class="gp-body" id="gp-body">
+
+      <!-- Camera / canvas preview -->
+      <div class="gp-cam-wrap">
+        <video  id="gp-video"  autoplay playsinline muted></video>
+        <canvas id="gp-canvas" width="320" height="240"></canvas>
+        <div class="gp-cam-overlay" id="gp-cam-overlay">
+          <div class="gp-cam-msg">📷<br>Click <strong>Enable</strong><br>to start camera</div>
+        </div>
+      </div>
+
+      <!-- Detected gesture name -->
+      <div class="gp-detected" id="gp-detected">—</div>
+
+      <!-- Progress bar: fills while holding open_hand to go back -->
+      <div class="gp-progress-track">
+        <div class="gp-progress-fill" id="gp-progress-fill"></div>
+      </div>
+
+      <!-- Quick reference -->
+      <div class="gp-legend">
+        <div class="gp-leg-item"><span>☝️</span> Point — aim &amp; hold still to click</div>
+        <div class="gp-leg-item"><span>✌️</span> Peace — hand up/down to scroll</div>
+        <div class="gp-leg-item"><span>👋</span> Open Hand — hold to go back</div>
+      </div>
+    </div>
+  </div>
+  <!-- ════════════════════════════════════════════════════════════ -->
+
+  <!-- MediaPipe Hands (browser SDK) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <!-- Map-page clock patch: mirrors dash time → map page elements (no app.js changes needed) -->
+  <script>
+    (function() {
+      var _orig = window.updateClocks;
+      // Runs after app.js defines updateClocks; we monkey-patch it once app.js loads
+      window.addEventListener('load', function() {
+        var base = window.updateClocks;
+        if (!base) return;
+        window.updateClocks = function() {
+          base();
+          var now = new Date();
+          var hh = String(now.getHours()).padStart(2,'0');
+          var mm = String(now.getMinutes()).padStart(2,'0');
+          var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+          var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          var timeStr = hh + ':' + mm;
+          var dateStr = days[now.getDay()] + ', ' + String(now.getDate()).padStart(2,'0') + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+          var t = document.getElementById('map-time-big');
+          var d = document.getElementById('map-date');
+          var s = document.getElementById('map-status-time');
+          if (t) t.textContent = timeStr;
+          if (d) d.textContent = dateStr;
+          if (s) s.textContent = timeStr;
+        };
+      });
+    })();
+  </script>
+
+  <!-- App logic (includes gesture module at the bottom) -->
   <script src="app.js"></script>
 </body>
 </html>
